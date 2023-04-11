@@ -23,10 +23,64 @@ public class KVServer {
 		server.createContext("/register", this::register);
 		server.createContext("/save", this::save);
 		server.createContext("/load", this::load);
+		server.createContext("/delete", this::delete);
 	}
 
-	private void load(HttpExchange h) {
-		// TODO Добавьте получение значения по ключу
+	private void delete(HttpExchange h) throws IOException {
+		try {
+			System.out.println("\n/delete");
+			if (!hasAuth(h)) {
+				System.out.println("Запрос неавторизован, нужен параметр в query API_TOKEN со значением апи-ключа");
+				h.sendResponseHeaders(403, 0);
+				return;
+			}
+			if ("POST".equals(h.getRequestMethod())) {
+				String key = h.getRequestURI().getPath().substring("/delete/".length());
+				if (key.isEmpty()) {
+					System.out.println("Key для удаления пустой. key указывается в пути: /delete/{key}");
+					h.sendResponseHeaders(400, 0);
+					return;
+				}
+				data.remove(key);
+				h.sendResponseHeaders(200, 0);
+			} else {
+				System.out.println("/delete ждёт POST-запрос, а получил: " + h.getRequestMethod());
+				h.sendResponseHeaders(405, 0);
+			}
+		} finally {
+			h.close();
+		}
+	}
+
+	private void load(HttpExchange h) throws IOException {
+		try {
+			System.out.println("\n/load");
+			if (!hasAuth(h)) {
+				System.out.println("Запрос неавторизован, нужен параметр в query API_TOKEN со значением апи-ключа");
+				h.sendResponseHeaders(403, 0);
+				return;
+			}
+			if ("GET".equals(h.getRequestMethod())) {
+				String key = h.getRequestURI().getPath().substring("/load/".length());
+				if (key.isEmpty()) {
+					System.out.println("Key для получения пустой. key указывается в пути: /load/{key}");
+					h.sendResponseHeaders(400, 0);
+					return;
+				}
+				String value = data.get(key);
+				if (value == null) {
+					System.out.println("Key для получения не найден");
+					h.sendResponseHeaders(405, 0);
+					return;
+				}
+				sendText(h, value);
+			} else {
+				System.out.println("/load ждёт GET-запрос, а получил: " + h.getRequestMethod());
+				h.sendResponseHeaders(405, 0);
+			}
+		} finally {
+			h.close();
+		}
 	}
 
 	private void save(HttpExchange h) throws IOException {
